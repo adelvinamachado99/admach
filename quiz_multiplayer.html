@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Multiplayer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f9f7;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.10);
+    --border-md: rgba(0,0,0,0.18);
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-light: #9a9a9a;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --green-bg: #EAF3DE; --green-text: #2e5a0e;
+    --red-bg: #FCEBEB; --red-text: #8c2020;
+    --blue-bg: #E6F1FB; --blue-text: #0e4580;
+    --amber-bg: #FAEEDA; --amber-text: #7a4010;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141414;
+      --surface: #1e1e1e;
+      --border: rgba(255,255,255,0.10);
+      --border-md: rgba(255,255,255,0.18);
+      --text: #f0f0f0;
+      --text-muted: #a0a0a0;
+      --text-light: #686868;
+      --green-bg: #1a2e0e; --green-text: #8fca5a;
+      --red-bg: #2e1010; --red-text: #e07070;
+      --blue-bg: #0e1e30; --blue-text: #70aee0;
+      --amber-bg: #2e1e08; --amber-text: #e0a050;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .14s, opacity .14s;
+    text-decoration: none;
+  }
+  .btn:hover { background: var(--border); }
+  .btn.primary {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .btn.primary:hover { opacity: .82; }
+  .btn.danger { border-color: var(--red-text); color: var(--red-text); }
+  .btn.danger:hover { background: var(--red-bg); }
+  .btn.sm { padding: 5px 12px; font-size: 12px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  h1 { font-size: 22px; font-weight: 500; }
+  h2 { font-size: 18px; font-weight: 500; }
+  h3 { font-size: 16px; font-weight: 500; }
+
+  label { font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 5px; }
+  input, select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--text); }
+
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mt1 { margin-top: .75rem; }
+  .mt2 { margin-top: 1.25rem; }
+  .mt3 { margin-top: 2rem; }
+  .mb1 { margin-bottom: .75rem; }
+  .mb2 { margin-bottom: 1.25rem; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 13px; }
+  .divider { height: 0.5px; background: var(--border); margin: 1.25rem 0; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge.easy { background: var(--green-bg); color: var(--green-text); }
+  .badge.medium { background: var(--amber-bg); color: var(--amber-text); }
+  .badge.hard { background: var(--red-bg); color: var(--red-text); }
+
+  .player-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 12px;
+    background: var(--border);
+    border: 0.5px solid var(--border-md);
+    border-radius: 20px;
+    font-size: 13px;
+  }
+  .chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    font-family: inherit;
+  }
+  .chip-remove:hover { color: var(--red-text); }
+
+  /* Home */
+  .home-hero { text-align: center; padding: 2.5rem 0 1.5rem; }
+  .home-icon { font-size: 48px; margin-bottom: 1rem; }
+  .home-btns { display: flex; flex-direction: column; gap: 10px; max-width: 260px; margin: 1.5rem auto 0; }
+  .home-btns .btn { justify-content: center; padding: 11px 18px; font-size: 15px; }
+
+  /* Progress / Timer */
+  .progress-bar {
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 10px 0 6px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .1s linear, background .3s;
+  }
+
+  /* Options */
+  .opt-btn {
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    margin: 6px 0;
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .13s, border-color .13s, color .13s;
+    line-height: 1.5;
+  }
+  .opt-btn:hover:not(:disabled) { background: var(--border); }
+  .opt-btn:disabled { cursor: not-allowed; }
+  .opt-btn.correct { background: var(--green-bg); border-color: var(--green-text); color: var(--green-text); }
+  .opt-btn.wrong { background: var(--red-bg); border-color: var(--red-text); color: var(--red-text); }
+  .opt-btn.reveal { background: var(--blue-bg); border-color: var(--blue-text); color: var(--blue-text); }
+
+  /* Feedback */
+  .feedback-box {
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+  .feedback-box.ok { background: var(--green-bg); color: var(--green-text); }
+  .feedback-box.fail { background: var(--red-bg); color: var(--red-text); }
+
+  /* Ranking rows */
+  .rank-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 1.25rem;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--surface);
+  }
+  .rank-row:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .rank-row:last-child { border-bottom: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .rank-row:only-child { border-radius: var(--radius-lg); }
+
+  .rank-medal { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+  .rank-num { font-size: 12px; color: var(--text-muted); width: 28px; text-align: center; flex-shrink: 0; }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    body { padding: 1rem .75rem 2rem; }
+    .col2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HOME -->
+  <div id="s-home" class="screen active">
+    <div class="home-hero">
+      <div class="home-icon">🎯</div>
+      <h1>Quiz Multiplayer</h1>
+      <p class="muted small mt1">Jogue com amigos, escolha tópicos<br>e compita pelo ranking</p>
+    </div>
+    <div class="home-btns">
+      <button class="btn primary" onclick="showScreen('s-players')">👥 Novo jogo</button>
+      <button class="btn" onclick="goToRanking()">🏆 Ver ranking</button>
+    </div>
+  </div>
+
+  <!-- PLAYERS -->
+  <div id="s-players" class="screen">
+    <div class="row mb2">
+      <button class="btn sm" onclick="showScreen('s-home')">← Voltar</button>
+      <h2>Jogadores</h2>
+    </div>
+    <p class="small muted mb1">Adicione de 1 a 6 jogadores</p>
+    <div class="row mb1">
+      <input id="inp-player" placeholder="Nome do jogador" style="flex:1;min-width:120px"
+        onkeydown="if(event.key==='Enter')addPlayer()">
+      <button class="btn" onclick="addPlayer()">+ Adicionar</button>
+    </div>
+    <div id="player-list" class="row mt1" style="min-height:36px"></div>
+    <div class="divider"></div>
+    <button class="btn primary" onclick="showScreen('s-config')">⚙️ Configurar quiz →</button>
+  </div>
+
+  <!-- CONFIG -->
+  <div id="s-config" class="screen">
+    <div class="row mb2">
+      <button class="btn sm" onclick="showScreen('s-players')">← Voltar</button>
+      <h2>Configuração</h2>
+    </div>
+    <div class="mt1">
+      <label>Tópico</label>
+      <select id="sel-topic">
+        <option value="geral">🌍 Conhecimentos Gerais</option>
+        <option value="ciencia">🔬 Ciência</option>
+        <option value="historia">📜 História</option>
+        <option value="tecnologia">💻 Tecnologia</option>
+        <option value="esportes">⚽ Esportes</option>
+        <option value="geografia">🗺️ Geografia</option>
+      </select>
+    </div>
+    <div class="mt2">
+      <label>Nível de dificuldade</label>
+      <select id="sel-level">
+        <option value="easy">🟢 Fácil — 20 segundos por resposta</option>
+        <option value="medium" selected>🟡 Médio — 15 segundos por resposta</option>
+        <option value="hard">🔴 Difícil — 10 segundos por resposta</option>
+      </select>
+    </div>
+    <div class="mt2">
+      <label>Questões por jogador</label>
+      <select id="sel-qcount">
+        <option value="5">5 questões</option>
+        <option value="10" selected>10 questões</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <button class="btn primary" onclick="startGame()">▶ Iniciar jogo</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="s-game" class="screen">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <div class="row" style="gap:6px">
+        <span id="g-player" style="font-weight:500;font-size:15px"></span>
+        <span id="g-level-badge" class="badge"></span>
+      </div>
+      <span class="small muted" id="g-qnum"></span>
+    </div>
+    <div class="progress-bar">
+      <div id="timer-bar" class="progress-fill" style="width:100%;background:var(--text)"></div>
+    </div>
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <span class="small muted" id="g-topic"></span>
+      <span id="g-timer" style="font-size:13px;font-weight:500;color:var(--text-muted)"></span>
+    </div>
+    <div class="card mb1">
+      <p id="g-question" style="font-size:15px;line-height:1.65"></p>
+    </div>
+    <div id="g-options"></div>
+    <div id="g-feedback" style="display:none"></div>
+  </div>
+
+  <!-- ROUND END -->
+  <div id="s-roundend" class="screen">
+    <div style="text-align:center;padding:.75rem 0 1.25rem">
+      <div style="font-size:36px;margin-bottom:.5rem" id="re-icon"></div>
+      <h2 id="re-title"></h2>
+      <p class="small muted mt1" id="re-msg"></p>
+    </div>
+    <div class="card" style="text-align:center;margin-bottom:1rem">
+      <p class="small muted" style="margin-bottom:4px">Pontuação nesta rodada</p>
+      <p id="re-score" style="font-size:30px;font-weight:500"></p>
+    </div>
+    <div id="re-scores-list" class="mb2"></div>
+    <div class="row">
+      <button class="btn primary" id="re-next-btn"></button>
+      <button class="btn" onclick="goToRanking()">🏆 Ranking</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="s-gameover" class="screen">
+    <div style="text-align:center;padding:.75rem 0 1.25rem">
+      <div style="font-size:42px;margin-bottom:.5rem">🏆</div>
+      <h1>Fim de jogo!</h1>
+      <p class="small muted mt1">Resultado final da partida</p>
+    </div>
+    <div id="go-results" class="mb2"></div>
+    <div class="row">
+      <button class="btn primary" onclick="saveToRanking()">⭐ Salvar no ranking</button>
+      <button class="btn" onclick="showScreen('s-home')">🏠 Menu</button>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div id="s-ranking" class="screen">
+    <div class="row" style="justify-content:space-between;margin-bottom:1rem">
+      <div class="row">
+        <button class="btn sm" onclick="showScreen('s-home')">← Voltar</button>
+        <h2>🏆 Ranking</h2>
+      </div>
+      <button class="btn sm danger" onclick="clearRanking()">🗑 Zerar</button>
+    </div>
+    <div id="ranking-filters" class="row mb1"></div>
+    <div id="ranking-list"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── Questions Bank ───────────────────────────────────────────────────────────
+const QUESTIONS = {
+  geral: {
+    easy: [
+      {q:"Qual é a capital do Brasil?",o:["Brasília","São Paulo","Rio de Janeiro","Salvador"],a:0,exp:"Brasília é a capital federal desde 1960."},
+      {q:"Quantos dias tem um ano bissexto?",o:["365","366","364","367"],a:1,exp:"Anos bissextos têm 366 dias, com fevereiro tendo 29 dias."},
+      {q:"Qual o maior oceano do mundo?",o:["Atlântico","Índico","Ártico","Pacífico"],a:3,exp:"O Oceano Pacífico cobre mais de 165 milhões de km²."},
+      {q:"Quantos lados tem um hexágono?",o:["5","6","7","8"],a:1,exp:"Hexágono vem do grego 'hex' = seis."},
+      {q:"Qual planeta é o mais próximo do Sol?",o:["Vênus","Marte","Mercúrio","Terra"],a:2,exp:"Mercúrio é o primeiro planeta do sistema solar."},
+      {q:"De que material é feita a estátua do Cristo Redentor?",o:["Mármore","Granito","Concreto e pedra-sabão","Bronze"],a:2,exp:"O Cristo Redentor foi construído em concreto revestido de pedra-sabão."},
+      {q:"Qual é o animal terrestre mais rápido?",o:["Leão","Guepardo","Cavalo","Leopardo"],a:1,exp:"O guepardo pode atingir até 120 km/h em curtas distâncias."},
+      {q:"Qual é o menor país do mundo?",o:["Mônaco","San Marino","Vaticano","Liechtenstein"],a:2,exp:"O Vaticano tem apenas 0,44 km²."},
+      {q:"Qual instrumento tem 88 teclas?",o:["Órgão","Piano","Cravo","Acordeão"],a:1,exp:"O piano moderno padrão tem 88 teclas (52 brancas e 36 pretas)."},
+      {q:"Quantos ossos tem o corpo humano adulto?",o:["206","300","186","250"],a:0,exp:"Adultos têm 206 ossos; bebês nascem com cerca de 300 que fundem com o crescimento."},
+    ],
+    medium: [
+      {q:"Qual é o elemento químico mais abundante no universo?",o:["Oxigênio","Hélio","Hidrogênio","Carbono"],a:2,exp:"O Hidrogênio corresponde a cerca de 75% da matéria visível do universo."},
+      {q:"Em que ano foi fundada a empresa Apple?",o:["1972","1976","1980","1984"],a:1,exp:"Apple foi fundada em 1º de abril de 1976 por Steve Jobs, Steve Wozniak e Ronald Wayne."},
+      {q:"Qual o osso mais longo do corpo humano?",o:["Úmero","Tíbia","Fêmur","Rádio"],a:2,exp:"O fêmur (osso da coxa) é o maior e mais resistente osso do corpo."},
+      {q:"Qual escritor criou Sherlock Holmes?",o:["Agatha Christie","Edgar Allan Poe","Arthur Conan Doyle","Charles Dickens"],a:2,exp:"Arthur Conan Doyle criou Sherlock Holmes em 1887."},
+      {q:"Qual é a velocidade da luz no vácuo (aproximada)?",o:["150.000 km/s","300.000 km/s","500.000 km/s","1.000.000 km/s"],a:1,exp:"A luz viaja a ~299.792 km/s no vácuo."},
+      {q:"Quantos países fazem parte da União Europeia?",o:["25","27","30","32"],a:1,exp:"Após o Brexit, a UE tem 27 países membros."},
+      {q:"Qual é a moeda do Japão?",o:["Yuan","Won","Iene","Ringgit"],a:2,exp:"O Iene (¥) é a moeda oficial do Japão."},
+      {q:"Quem pintou a Mona Lisa?",o:["Michelangelo","Rafael","Leonardo da Vinci","Caravaggio"],a:2,exp:"A Mona Lisa foi pintada por Leonardo da Vinci entre 1503 e 1519."},
+      {q:"Qual é o rio mais longo do mundo?",o:["Amazonas","Nilo","Yangtzé","Mississípi"],a:1,exp:"O Rio Nilo tem ~6.650 km."},
+      {q:"Em que país fica a Torre Eiffel?",o:["Itália","Bélgica","França","Suíça"],a:2,exp:"A Torre Eiffel fica em Paris, capital da França, construída em 1889."},
+    ],
+    hard: [
+      {q:"Qual é o símbolo químico do tungstênio?",o:["Tu","Tn","W","Tg"],a:2,exp:"W vem do nome alemão 'Wolfram'; tem o maior ponto de fusão dos metais."},
+      {q:"Em que ano Cristóvão Colombo chegou à América?",o:["1488","1492","1498","1500"],a:1,exp:"Colombo chegou às Bahamas em 12 de outubro de 1492."},
+      {q:"Qual teorema relaciona catetos e hipotenusa?",o:["Teorema de Tales","Teorema de Fermat","Teorema de Pitágoras","Postulado de Euclides"],a:2,exp:"a² + b² = c², onde c é a hipotenusa, foi formulado por Pitágoras (~570 a.C.)."},
+      {q:"Qual filósofo escreveu 'A República'?",o:["Aristóteles","Sócrates","Platão","Epicteto"],a:2,exp:"'A República' foi escrita por Platão, discípulo de Sócrates."},
+      {q:"Qual é a capital da Islândia?",o:["Oslo","Reykjavik","Helsinque","Bergen"],a:1,exp:"Reykjavik é a capital e maior cidade da Islândia."},
+      {q:"Quem desenvolveu a teoria da relatividade geral?",o:["Isaac Newton","Niels Bohr","Max Planck","Albert Einstein"],a:3,exp:"Einstein publicou a relatividade geral em 1915."},
+      {q:"Qual elemento tem número atômico 79?",o:["Prata","Platina","Ouro","Cobre"],a:2,exp:"O Ouro (Au) tem número atômico 79 na tabela periódica."},
+      {q:"Quantos bits compõem 1 byte?",o:["4","8","16","32"],a:1,exp:"1 byte = 8 bits, unidade fundamental em computação."},
+      {q:"Em que ano terminou a Segunda Guerra Mundial?",o:["1944","1945","1946","1947"],a:1,exp:"A Segunda Guerra terminou em 1945 com a rendição da Alemanha e do Japão."},
+      {q:"Qual é o nome do único osso móvel do crânio humano?",o:["Zigomático","Maxilar","Mandíbula","Occipital"],a:2,exp:"A mandíbula é o único osso móvel do crânio humano."},
+    ]
+  }
+};
+
+// Para tópicos sem banco dedicado, usa geral
+function getQuestions(topic, level) {
+  const bank = QUESTIONS[topic] || QUESTIONS.geral;
+  return bank[level] || bank.medium;
+}
+
+const TIME = { easy: 20, medium: 15, hard: 10 };
+const LEVEL_LABEL = { easy: 'Fácil', medium: 'Médio', hard: 'Difícil' };
+
+let state = {
+  players: [],
+  topic: 'geral',
+  topicLabel: '',
+  level: 'medium',
+  qcount: 10,
+  currentPlayer: 0,
+  qIndex: 0,
+  scores: {},
+  questions: [],
+  timerInterval: null,
+  timeLeft: 0,
+  answered: false
+};
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goToRanking() {
+  renderRanking();
+  showScreen('s-ranking');
+}
+
+// ─── Players ──────────────────────────────────────────────────────────────────
+function addPlayer() {
+  const inp = document.getElementById('inp-player');
+  const name = inp.value.trim();
+  if (!name || state.players.length >= 6) return;
+  if (state.players.includes(name)) { inp.value = ''; return; }
+  state.players.push(name);
+  renderPlayers();
+  inp.value = '';
+  inp.focus();
+}
+
+function removePlayer(n) {
+  state.players = state.players.filter(p => p !== n);
+  renderPlayers();
+}
+
+function renderPlayers() {
+  document.getElementById('player-list').innerHTML = state.players.map(p =>
+    `<span class="player-chip">👤 ${p}
+      <button class="chip-remove" onclick="removePlayer('${p.replace(/'/g,"\\'")}')">×</button>
+    </span>`
+  ).join('');
+}
+
+// ─── Game Start ───────────────────────────────────────────────────────────────
+function startGame() {
+  if (state.players.length === 0) { alert('Adicione pelo menos 1 jogador!'); return; }
+  state.topic = document.getElementById('sel-topic').value;
+  state.topicLabel = document.getElementById('sel-topic').options[document.getElementById('sel-topic').selectedIndex].text;
+  state.level = document.getElementById('sel-level').value;
+  state.qcount = parseInt(document.getElementById('sel-qcount').value);
+  state.scores = {};
+  state.players.forEach(p => state.scores[p] = 0);
+  state.currentPlayer = 0;
+  startPlayerTurn();
+}
+
+function shuffle(arr) { return arr.slice().sort(() => Math.random() - .5); }
+
+function startPlayerTurn() {
+  state.qIndex = 0;
+  const pool = getQuestions(state.topic, state.level);
+  state.questions = shuffle(pool).slice(0, state.qcount);
+  showQuestion();
+}
+
+// ─── Question Display ─────────────────────────────────────────────────────────
+function showQuestion() {
+  const q = state.questions[state.qIndex];
+  const p = state.players[state.currentPlayer];
+  state.answered = false;
+
+  document.getElementById('g-player').textContent = p;
+  const badge = document.getElementById('g-level-badge');
+  badge.textContent = LEVEL_LABEL[state.level];
+  badge.className = 'badge ' + state.level;
+  document.getElementById('g-qnum').textContent = `${state.qIndex + 1} / ${state.qcount}`;
+  document.getElementById('g-topic').textContent = state.topicLabel;
+  document.getElementById('g-question').textContent = q.q;
+  document.getElementById('g-feedback').style.display = 'none';
+
+  document.getElementById('g-options').innerHTML = q.o.map((o, i) =>
+    `<button class="opt-btn" onclick="answer(${i})">${String.fromCharCode(65 + i)}. ${o}</button>`
+  ).join('');
+
+  showScreen('s-game');
+  startTimer(TIME[state.level]);
+}
+
+// ─── Timer ────────────────────────────────────────────────────────────────────
+function startTimer(sec) {
+  clearInterval(state.timerInterval);
+  state.timeLeft = sec;
+  updateTimer(sec, sec);
+  state.timerInterval = setInterval(() => {
+    state.timeLeft--;
+    updateTimer(state.timeLeft, sec);
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      if (!state.answered) timeOut();
+    }
+  }, 1000);
+}
+
+function updateTimer(t, max) {
+  document.getElementById('g-timer').textContent = t + 's';
+  const pct = (t / max * 100) + '%';
+  const bar = document.getElementById('timer-bar');
+  bar.style.width = pct;
+  bar.style.background = t <= 3 ? '#E24B4A' : t <= 6 ? '#BA7517' : 'var(--text)';
+}
+
+function timeOut() {
+  state.answered = true;
+  const q = state.questions[state.qIndex];
+  const btns = document.querySelectorAll('.opt-btn');
+  btns[q.a].classList.add('reveal');
+  btns.forEach(b => b.disabled = true);
+  showFeedback(false, '⏱ Tempo esgotado! ' + q.exp);
+  setTimeout(nextQuestion, 2400);
+}
+
+// ─── Answer ───────────────────────────────────────────────────────────────────
+function answer(idx) {
+  if (state.answered) return;
+  state.answered = true;
+  clearInterval(state.timerInterval);
+  const q = state.questions[state.qIndex];
+  const btns = document.querySelectorAll('.opt-btn');
+  btns.forEach(b => b.disabled = true);
+  const correct = idx === q.a;
+  if (correct) {
+    btns[idx].classList.add('correct');
+    const bonus = Math.ceil(state.timeLeft / TIME[state.level] * 10);
+    const pts = 10 + bonus;
+    state.scores[state.players[state.currentPlayer]] += pts;
+    showFeedback(true, `✅ Correto! +${pts} pontos (${bonus} bônus de velocidade). ${q.exp}`);
+  } else {
+    btns[idx].classList.add('wrong');
+    btns[q.a].classList.add('reveal');
+    showFeedback(false, `❌ Errado. Resposta: ${q.o[q.a]}. ${q.exp}`);
+  }
+  setTimeout(nextQuestion, 2400);
+}
+
+function showFeedback(ok, msg) {
+  const el = document.getElementById('g-feedback');
+  el.style.display = 'block';
+  el.className = 'feedback-box ' + (ok ? 'ok' : 'fail');
+  el.textContent = msg;
+}
+
+function nextQuestion() {
+  state.qIndex++;
+  if (state.qIndex >= state.qcount) endPlayerTurn();
+  else showQuestion();
+}
+
+// ─── Round End ────────────────────────────────────────────────────────────────
+function endPlayerTurn() {
+  const p = state.players[state.currentPlayer];
+  const score = state.scores[p];
+  const max = state.qcount * 20;
+  document.getElementById('re-icon').textContent = score >= max * .7 ? '🏅' : score >= max * .4 ? '💪' : '😅';
+  document.getElementById('re-title').textContent = `Rodada de ${p}`;
+  document.getElementById('re-msg').textContent = `${state.qcount} questões · ${LEVEL_LABEL[state.level]}`;
+  document.getElementById('re-score').textContent = score + ' pts';
+
+  const sorted = state.players.slice().sort((a, b) => state.scores[b] - state.scores[a]);
+  const medals = ['🥇', '🥈', '🥉'];
+  document.getElementById('re-scores-list').innerHTML =
+    `<p class="small muted mb1">Placar atual</p>` +
+    sorted.map((pl, i) =>
+      `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--border)">
+        <span class="small">${medals[i] || '  '} ${pl}</span>
+        <span style="font-weight:500">${state.scores[pl]} pts</span>
+      </div>`
+    ).join('');
+
+  const isLast = state.currentPlayer >= state.players.length - 1;
+  const btn = document.getElementById('re-next-btn');
+  if (isLast) {
+    btn.innerHTML = '🏁 Ver resultado final';
+    btn.onclick = showGameOver;
+  } else {
+    btn.innerHTML = '▶ Próximo jogador';
+    btn.onclick = nextPlayer;
+  }
+  showScreen('s-roundend');
+}
+
+function nextPlayer() {
+  state.currentPlayer++;
+  if (state.currentPlayer >= state.players.length) showGameOver();
+  else startPlayerTurn();
+}
+
+// ─── Game Over ────────────────────────────────────────────────────────────────
+function showGameOver() {
+  const sorted = state.players.slice().sort((a, b) => state.scores[b] - state.scores[a]);
+  const medals = ['🥇', '🥈', '🥉'];
+  document.getElementById('go-results').innerHTML = sorted.map((p, i) =>
+    `<div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="row">
+        <span style="font-size:${i===0?'24px':'18px'};width:32px">${medals[i] || ''}</span>
+        <div>
+          <p style="font-weight:${i===0?'500':'400'};font-size:${i===0?'16px':'14px'}">${p}</p>
+          <p class="small muted">${i === 0 ? 'Vencedor!' : `${i+1}º lugar`}</p>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <span style="font-size:${i===0?'22px':'17px'};font-weight:500">${state.scores[p]}</span>
+        <span class="small muted"> pts</span>
+      </div>
+    </div>`
+  ).join('');
+  showScreen('s-gameover');
+}
+
+// ─── Ranking ──────────────────────────────────────────────────────────────────
+function saveToRanking() {
+  let ranking = [];
+  try { ranking = JSON.parse(localStorage.getItem('quiz_ranking')) || []; } catch(e) {}
+  const level = LEVEL_LABEL[state.level];
+  state.players.forEach(p => {
+    ranking.push({
+      name: p,
+      score: state.scores[p],
+      topic: state.topicLabel,
+      level,
+      levelKey: state.level,
+      date: new Date().toLocaleDateString('pt-BR')
+    });
+  });
+  ranking.sort((a, b) => b.score - a.score);
+  localStorage.setItem('quiz_ranking', JSON.stringify(ranking.slice(0, 50)));
+  goToRanking();
+}
+
+function clearRanking() {
+  if (!confirm('Zerar todo o ranking? Esta ação não pode ser desfeita.')) return;
+  localStorage.removeItem('quiz_ranking');
+  renderRanking();
+}
+
+let rankFilter = null;
+
+function renderRanking() {
+  let ranking = [];
+  try { ranking = JSON.parse(localStorage.getItem('quiz_ranking')) || []; } catch(e) {}
+
+  const levels = [...new Set(ranking.map(r => r.level))];
+  const filtersEl = document.getElementById('ranking-filters');
+  if (levels.length > 1) {
+    filtersEl.innerHTML =
+      `<button class="btn sm${!rankFilter?' primary':''}" onclick="setRankFilter(null)">Todos</button>` +
+      levels.map(l => {
+        const k = ranking.find(r=>r.level===l)?.levelKey||'medium';
+        return `<button class="btn sm${rankFilter===l?' primary':''}" onclick="setRankFilter('${l}')"><span class="badge ${k}" style="padding:2px 8px">${l}</span></button>`;
+      }).join('');
+  } else {
+    filtersEl.innerHTML = '';
+  }
+
+  const filtered = rankFilter ? ranking.filter(r => r.level === rankFilter) : ranking;
+  const el = document.getElementById('ranking-list');
+  if (!filtered.length) {
+    el.innerHTML = '<p class="muted small" style="text-align:center;padding:2.5rem">Nenhuma pontuação registrada ainda.<br>Jogue e salve seu resultado!</p>';
+    return;
+  }
+  const medals = ['🥇', '🥈', '🥉'];
+  el.innerHTML = filtered.slice(0, 20).map((r, i) =>
+    `<div class="rank-row">
+      <div class="row" style="flex:1;gap:10px">
+        ${i < 3
+          ? `<span class="rank-medal">${medals[i]}</span>`
+          : `<span class="rank-num">${i+1}</span>`}
+        <div>
+          <p style="font-size:14px;font-weight:${i<3?'500':'400'}">${r.name}</p>
+          <p class="small muted" style="font-size:12px">${r.topic} · <span class="badge ${r.levelKey||'medium'}" style="padding:1px 7px;font-size:11px">${r.level}</span> · ${r.date}</p>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <span style="font-size:${i<3?'18px':'15px'};font-weight:500">${r.score}</span>
+        <span class="small muted"> pts</span>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function setRankFilter(lv) {
+  rankFilter = lv;
+  renderRanking();
+}
+</script>
+</body>
+</html>
